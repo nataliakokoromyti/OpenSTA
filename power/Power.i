@@ -184,4 +184,20 @@ report_activity_annotation_cmd(bool report_unannotated,
                                   report_annotated);
 }
 
+// SWIG wrapper to enable/disable dual-edge power propagation
+void
+set_power_activity_propagation_dual_edge(bool enable)
+{
+  Power *power = Sta::sta()->power();
+  power->setActivityPropagationDualEdge(enable);
+}
+
+// SWIG wrapper to check dual-edge mode status
+bool
+power_activity_propagation_dual_edge()
+{
+  Power *power = Sta::sta()->power();
+  return power->activityPropagationDualEdge();
+}
+
 %} // inline

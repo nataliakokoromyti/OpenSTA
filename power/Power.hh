@@ -103,6 +103,9 @@ public:
 		       float duty,
 		       PwrActivityOrigin origin);
   void unsetUserActivity(const Pin *pin);
+  // Added dual-edge power propagation mode support
+  void setActivityPropagationDualEdge(bool enable);
+  bool activityPropagationDualEdge() const;
   void reportActivityAnnotation(bool report_unannotated,
                                 bool report_annotated);
   float clockMinPeriod();
@@ -237,6 +240,8 @@ private:
   PwrActivityMap activity_map_;
   PwrSeqActivityMap seq_activity_map_;
   bool activities_valid_;
+  // Flag for dual-edge power propagation mode
+  bool activity_propagation_dual_edge_;
   Bdd bdd_;
   std::map<const Instance*, PowerResult> instance_powers_;
   bool instance_powers_valid_;

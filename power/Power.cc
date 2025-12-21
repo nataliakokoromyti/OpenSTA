@@ -100,6 +100,8 @@ Power::Power(StaState *sta) :
   input_activity_(),            // default set in ensureActivities()
   seq_activity_map_(100, SeqPinHash(network_), SeqPinEqual()),
   activities_valid_(false),
+  // Initialize dual-edge mode to false (disabled by default)
+  activity_propagation_dual_edge_(false),
   bdd_(sta),
   instance_powers_valid_(false),
   corner_(nullptr)
@@ -154,6 +156,22 @@ Power::unsetInputActivity()
 {
   input_activity_.init();
   activitiesInvalid();
+}
+
+// Dual-edge propagation mode setter
+void
+Power::setActivityPropagationDualEdge(bool enable)
+{
+  activity_propagation_dual_edge_ = enable;
+  // Invalidate activities to recalculate with new mode
+  activitiesInvalid();
+}
+
+// Dual-edge propagation mode getter
+bool
+Power::activityPropagationDualEdge() const
+{
+  return activity_propagation_dual_edge_;
 }
 
 void
@@ -692,14 +710,37 @@ Power::evalBddActivity(DdNode *bdd,
       Cudd_Ref(diff);
       float diff_duty = evalBddDuty(diff, inst);
       Cudd_RecursiveDeref(bdd_.cuddMgr(), diff);
-      float var_density = var_activity.density() * diff_duty;
+
+      float effective_density = var_activity.density();
+      if (activity_propagation_dual_edge_) {
+        effective_density *= 0.5;  // Per-edge density
+      }
+
+      float var_density = effective_density * diff_duty;
       density += var_density;
-      debugPrint(debug_, "power_activity", 3, "%s %.3e * %.3f = %.3e",
-                 network_->pathName(pin),
-                 var_activity.density(),
-                 diff_duty,
-                 var_density);
+
+      // Debug output shows per-edge density when dual-edge mode enabled
+      if (activity_propagation_dual_edge_) {
+        debugPrint(debug_, "power_activity", 3, "var %s %.3e (%.3e per-edge) * %.3f = %.3e",
+                   port->name(),
+                   var_activity.density(),
+                   effective_density,
+                   diff_duty,
+                   var_density);
+      } else {
+        debugPrint(debug_, "power_activity", 3, "var %s %.3e * %.3f = %.3e",
+                   port->name(),
+                   var_activity.density(),
+                   diff_duty,
+                   var_density);
+      }
     }
+  }
+
+  // In dual-edge mode: multiply by 2 because there are 2 independent edges per cycle
+  // where transitions can occur. This accounts for both posedge and negedge opportunities.
+  if (activity_propagation_dual_edge_) {
+    density *= 2.0;
   }
   return density;
 }
